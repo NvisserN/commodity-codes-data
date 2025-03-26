@@ -4,6 +4,10 @@
     <title>Commodity Code Finder</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Add cache control headers -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -115,6 +119,8 @@
         .credits {
             text-align: center;
             margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
             color: #666;
             font-size: 0.9em;
         }
@@ -126,6 +132,13 @@
 
         .credits a:hover {
             text-decoration: underline;
+        }
+
+        .search-tip {
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            margin: -15px 0 15px 0;
         }
 
         @media (max-width: 600px) {
@@ -153,8 +166,11 @@
             <input type="text" 
                    class="search-box" 
                    id="commoditySearchBox" 
-                   placeholder="Search by code, description, category, type or material (use comma for multiple terms)..." 
+                   placeholder="Search by code, description, category, type or material..." 
                    oninput="filterCommodityResults()">
+            <div class="search-tip">
+                Tip: Use commas to search for multiple terms, e.g. "shirt, katoen" or "metaal, schroef"
+            </div>
             <div id="commodityResults"></div>
         </div>
         <div class="credits">
@@ -164,6 +180,8 @@
 
     <script>
     var commodityData = [];
+    var lastSearchTime = 0;
+    var searchDelay = 300; // ms delay between searches
 
     function showError(message) {
         document.getElementById('commodityLoadingMessage').style.display = 'none';
@@ -179,7 +197,8 @@
     }
 
     function loadCommodityData() {
-        fetch('commodity_data.json')
+        // Add timestamp to prevent caching
+        fetch('commodity_data.json?' + new Date().getTime())
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok: ' + response.status);
@@ -198,12 +217,18 @@
     }
 
     function filterCommodityResults() {
+        var currentTime = new Date().getTime();
+        if (currentTime - lastSearchTime < searchDelay) {
+            return; // Skip if too soon after last search
+        }
+        lastSearchTime = currentTime;
+
         var searchText = document.getElementById('commoditySearchBox').value.toLowerCase();
         var resultsDiv = document.getElementById('commodityResults');
         resultsDiv.innerHTML = '';
         
         if (!searchText) {
-            resultsDiv.innerHTML = '<div class="no-results">Type to search for commodity codes...<br><small>Tip: Use commas to search for multiple terms, e.g. "shirt, katoen"</small></div>';
+            resultsDiv.innerHTML = '<div class="no-results">Type to search for commodity codes...</div>';
             return;
         }
 
