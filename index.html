@@ -1,12 +1,230 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Commodity Codes Data</title>
+    <title>Commodity Code Finder</title>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .commodity-finder {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2196F3;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-box:focus {
+            border-color: #2196F3;
+            outline: none;
+        }
+
+        .commodity-result {
+            padding: 20px;
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .commodity-result:hover {
+            border-color: #2196F3;
+            box-shadow: 0 2px 8px rgba(33,150,243,0.1);
+        }
+
+        .commodity-code {
+            color: #2196F3;
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        .commodity-description {
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .commodity-meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .commodity-meta span {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .commodity-meta strong {
+            margin-right: 5px;
+        }
+
+        #commodityLoadingMessage {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        #commodityErrorMessage {
+            text-align: center;
+            padding: 20px;
+            color: #ff0000;
+            background: #fff3f3;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .commodity-finder {
+                padding: 15px;
+            }
+            
+            .commodity-meta {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Commodity Codes Data</h1>
-    <p>This repository hosts commodity codes data for the Zoho help center search tool.</p>
-    <p>Access the JSON data directly at: <a href="commodity_data.json">commodity_data.json</a></p>
+    <div class="commodity-finder">
+        <h1>Commodity Code Finder</h1>
+        <div id="commodityLoadingMessage">Loading commodity data...</div>
+        <div id="commodityErrorMessage" style="display: none;"></div>
+        <div id="commodityContent" style="display: none;">
+            <input type="text" 
+                   class="search-box" 
+                   id="commoditySearchBox" 
+                   placeholder="Search by code, description, category, type or material..." 
+                   oninput="filterCommodityResults()">
+            <div id="commodityResults"></div>
+        </div>
+    </div>
+
+    <script>
+    var commodityData = [];
+
+    function showError(message) {
+        document.getElementById('commodityLoadingMessage').style.display = 'none';
+        document.getElementById('commodityErrorMessage').style.display = 'block';
+        document.getElementById('commodityErrorMessage').innerHTML = message;
+        document.getElementById('commodityContent').style.display = 'none';
+    }
+
+    function showContent() {
+        document.getElementById('commodityLoadingMessage').style.display = 'none';
+        document.getElementById('commodityErrorMessage').style.display = 'none';
+        document.getElementById('commodityContent').style.display = 'block';
+    }
+
+    function loadCommodityData() {
+        fetch('commodity_data.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                commodityData = data;
+                showContent();
+                filterCommodityResults();
+            })
+            .catch(error => {
+                console.error('Error loading commodity data:', error);
+                showError('Error loading commodity data: ' + error.message + '<br><br>Please try again later.');
+            });
+    }
+
+    function filterCommodityResults() {
+        var searchText = document.getElementById('commoditySearchBox').value.toLowerCase();
+        var resultsDiv = document.getElementById('commodityResults');
+        resultsDiv.innerHTML = '';
+        
+        if (!searchText) {
+            resultsDiv.innerHTML = '<div class="no-results">Type to search for commodity codes...</div>';
+            return;
+        }
+
+        var filtered = commodityData.filter(item => 
+            item.code.toLowerCase().includes(searchText) ||
+            item.description.toLowerCase().includes(searchText) ||
+            item.category.toLowerCase().includes(searchText) ||
+            item.type.toLowerCase().includes(searchText) ||
+            item.material.toLowerCase().includes(searchText)
+        );
+        
+        if (filtered.length === 0) {
+            resultsDiv.innerHTML = '<div class="no-results">No matching items found</div>';
+            return;
+        }
+        
+        filtered.slice(0, 50).forEach(item => {
+            var resultItem = document.createElement('div');
+            resultItem.className = 'commodity-result';
+            resultItem.innerHTML = 
+                '<h3 class="commodity-code">Code: ' + item.code + '</h3>' +
+                '<p class="commodity-description">' + item.description + '</p>' +
+                '<div class="commodity-meta">' +
+                '<span><strong>Category:</strong> ' + item.category + '</span>' +
+                '<span><strong>Type:</strong> ' + item.type + '</span>' +
+                '<span><strong>Material:</strong> ' + item.material + '</span>' +
+                '</div>';
+            resultsDiv.appendChild(resultItem);
+        });
+        
+        if (filtered.length > 50) {
+            var moreResults = document.createElement('div');
+            moreResults.className = 'no-results';
+            moreResults.innerHTML = 'Showing first 50 results. Please refine your search to see more specific items.';
+            resultsDiv.appendChild(moreResults);
+        }
+    }
+
+    // Load data when page loads
+    loadCommodityData();
+    </script>
 </body>
 </html>
