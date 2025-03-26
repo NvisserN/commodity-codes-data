@@ -112,6 +112,22 @@
             border-radius: 4px;
         }
 
+        .credits {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .credits a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+
+        .credits a:hover {
+            text-decoration: underline;
+        }
+
         @media (max-width: 600px) {
             body {
                 padding: 10px;
@@ -137,9 +153,12 @@
             <input type="text" 
                    class="search-box" 
                    id="commoditySearchBox" 
-                   placeholder="Search by code, description, category, type or material..." 
+                   placeholder="Search by code, description, category, type or material (use comma for multiple terms)..." 
                    oninput="filterCommodityResults()">
             <div id="commodityResults"></div>
+        </div>
+        <div class="credits">
+            Made by <a href="https://github.com/NvisserN" target="_blank">Niels Visser</a>
         </div>
     </div>
 
@@ -184,17 +203,23 @@
         resultsDiv.innerHTML = '';
         
         if (!searchText) {
-            resultsDiv.innerHTML = '<div class="no-results">Type to search for commodity codes...</div>';
+            resultsDiv.innerHTML = '<div class="no-results">Type to search for commodity codes...<br><small>Tip: Use commas to search for multiple terms, e.g. "shirt, katoen"</small></div>';
             return;
         }
 
-        var filtered = commodityData.filter(item => 
-            item.code.toLowerCase().includes(searchText) ||
-            item.description.toLowerCase().includes(searchText) ||
-            item.category.toLowerCase().includes(searchText) ||
-            item.type.toLowerCase().includes(searchText) ||
-            item.material.toLowerCase().includes(searchText)
-        );
+        // Split search terms by comma and trim whitespace
+        var searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term.length > 0);
+        
+        var filtered = commodityData.filter(item => {
+            // Item matches if ALL search terms are found in ANY of its fields
+            return searchTerms.every(term =>
+                item.code.toLowerCase().includes(term) ||
+                item.description.toLowerCase().includes(term) ||
+                item.category.toLowerCase().includes(term) ||
+                item.type.toLowerCase().includes(term) ||
+                item.material.toLowerCase().includes(term)
+            );
+        });
         
         if (filtered.length === 0) {
             resultsDiv.innerHTML = '<div class="no-results">No matching items found</div>';
