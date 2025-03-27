@@ -325,39 +325,36 @@
         let score = 0;
         const itemTexts = [
             item.code.toLowerCase(),
-            item.description.toLowerCase(),
-            item.category.toLowerCase(),
-            item.type.toLowerCase(),
-            item.material.toLowerCase()
+            item.description.toLowerCase()
         ];
 
+        // Exact matches in the main part (before m.u.v.) get higher scores
+        const mainPart = item.description.toLowerCase().split('m.u.v.')[0];
+        
         for (let searchTerm of searchTerms) {
             const termSynonyms = expandSearchTerms(searchTerm);
             for (let term of termSynonyms) {
-                // Zoeken in alle velden
-                for (let text of itemTexts) {
-                    if (text.includes(term)) {
-                        // Exacte matches krijgen een hogere score
-                        if (text === term) {
-                            score += 10;
-                        } else {
-                            score += 5;
-                        }
-                    }
+                // Hoofdwoord matches (hele woorden) krijgen hoogste score
+                const wholeWordRegex = new RegExp(`\\b${term}\\b`, 'i');
+                if (mainPart.match(wholeWordRegex)) {
+                    score += 20;  // Verhoogd van 10 naar 20
                 }
+                
+                // Gedeeltelijke matches in hoofdtekst
+                if (mainPart.includes(term)) {
+                    score += 5;
+                }
+                
                 // Extra punten voor matches in de titel/code
                 if (item.code.toLowerCase().includes(term)) {
                     score += 3;
-                }
-                if (item.description.toLowerCase().includes(term)) {
-                    score += 2;
                 }
             }
         }
 
         // Straf voor items met m.u.v. die de zoekterm bevatten
         if (isExcluded(item.description, searchTerms)) {
-            score -= 1000; // Zorgt ervoor dat deze items onderaan komen
+            score -= 1000;
         }
 
         return score;
@@ -365,33 +362,38 @@
 
     // Helper function to categorize items based on description
     function categorizeCommodity(description) {
-        description = description.toLowerCase();
+        // Haal eerst het hoofdgedeelte op (voor m.u.v.)
+        const mainPart = description.toLowerCase().split('m.u.v.')[0];
+        
+        // Meubels en Kasten (hoogste prioriteit voor deze termen)
+        if (mainPart.match(/\b(kast|kasten|meubel|meubilair|bureau|tafel|stoel)\b/)) {
+            return "Meubelen";
+        }
         
         // Voedsel en dranken
-        if (description.match(/melk|kaas|room|zuivel|yoghurt|boter/)) return "Zuivel";
-        if (description.match(/vlees|worst|ham|spek/)) return "Vlees";
-        if (description.match(/vis|schaaldieren|weekdieren/)) return "Vis & Zeevruchten";
-        if (description.match(/groente|fruit|aardappel|ui|knoflook/)) return "Groenten & Fruit";
-        if (description.match(/graan|meel|rijst|pasta/)) return "Granen & Meel";
-        if (description.match(/drank|wijn|bier|alcohol|sap/)) return "Dranken";
-        if (description.match(/suiker|zoetstof|chocolade|cacao/)) return "Zoetwaren";
+        if (mainPart.match(/\b(melk|kaas|room|zuivel|yoghurt|boter)\b/)) return "Zuivel";
+        if (mainPart.match(/\b(vlees|worst|ham|spek)\b/)) return "Vlees";
+        if (mainPart.match(/\b(vis|schaaldieren|weekdieren)\b/)) return "Vis & Zeevruchten";
+        if (mainPart.match(/\b(groente|fruit|aardappel|ui|knoflook)\b/)) return "Groenten & Fruit";
+        if (mainPart.match(/\b(graan|meel|rijst|pasta)\b/)) return "Granen & Meel";
+        if (mainPart.match(/\b(drank|wijn|bier|alcohol|sap)\b/)) return "Dranken";
+        if (mainPart.match(/\b(suiker|zoetstof|chocolade|cacao)\b/)) return "Zoetwaren";
         
         // Materialen
-        if (description.match(/katoen|wol|zijde|textiel|weefsel/)) return "Textiel";
-        if (description.match(/leder|leer|kunstleder|lakleder/)) return "Leder";
-        if (description.match(/hout|bamboe|kurk/)) return "Hout";
-        if (description.match(/papier|karton/)) return "Papier";
-        if (description.match(/kunststof|polymeer|plastic/)) return "Kunststof";
-        if (description.match(/metaal|staal|aluminium|koper|ijzer/)) return "Metaal";
-        if (description.match(/glas|keramiek|porselein/)) return "Glas & Keramiek";
+        if (mainPart.match(/\b(katoen|wol|zijde|textiel|weefsel)\b/)) return "Textiel";
+        if (mainPart.match(/\b(leder|leer|kunstleder|lakleder)\b/)) return "Leder";
+        if (mainPart.match(/\b(hout|bamboe|kurk)\b/)) return "Hout";
+        if (mainPart.match(/\b(papier|karton)\b/)) return "Papier";
+        if (mainPart.match(/\b(kunststof|polymeer|plastic)\b/)) return "Kunststof";
+        if (mainPart.match(/\b(metaal|staal|aluminium|koper|ijzer)\b/)) return "Metaal";
+        if (mainPart.match(/\b(glas|keramiek|porselein)\b/)) return "Glas & Keramiek";
         
         // Producten
-        if (description.match(/kleding|kledingstuk|shirt|broek|jas/)) return "Kleding";
-        if (description.match(/schoeisel|schoen|laars/)) return "Schoeisel";
-        if (description.match(/meubel|stoel|tafel|kast/)) return "Meubelen";
-        if (description.match(/gereedschap|machine|apparaat/)) return "Machines & Gereedschap";
-        if (description.match(/speelgoed|spel|sport/)) return "Speelgoed & Sport";
-        if (description.match(/cosmetica|parfum|zeep|shampoo/)) return "Cosmetica";
+        if (mainPart.match(/\b(kleding|kledingstuk|shirt|broek|jas)\b/)) return "Kleding";
+        if (mainPart.match(/\b(schoeisel|schoen|laars)\b/)) return "Schoeisel";
+        if (mainPart.match(/\b(gereedschap|machine|apparaat)\b/)) return "Machines & Gereedschap";
+        if (mainPart.match(/\b(speelgoed|spel|sport)\b/)) return "Speelgoed & Sport";
+        if (mainPart.match(/\b(cosmetica|parfum|zeep|shampoo)\b/)) return "Cosmetica";
         
         // Als geen specifieke categorie gevonden
         return "Overig";
