@@ -304,6 +304,48 @@
         return searchTerms.some(term => textAfterMuv.includes(term));
     }
 
+    function calculateRelevanceScore(item, searchTerms) {
+        let score = 0;
+        const itemTexts = [
+            item.code.toLowerCase(),
+            item.description.toLowerCase(),
+            item.category.toLowerCase(),
+            item.type.toLowerCase(),
+            item.material.toLowerCase()
+        ];
+
+        for (let searchTerm of searchTerms) {
+            const termSynonyms = expandSearchTerms(searchTerm);
+            for (let term of termSynonyms) {
+                // Zoeken in alle velden
+                for (let text of itemTexts) {
+                    if (text.includes(term)) {
+                        // Exacte matches krijgen een hogere score
+                        if (text === term) {
+                            score += 10;
+                        } else {
+                            score += 5;
+                        }
+                    }
+                }
+                // Extra punten voor matches in de titel/code
+                if (item.code.toLowerCase().includes(term)) {
+                    score += 3;
+                }
+                if (item.description.toLowerCase().includes(term)) {
+                    score += 2;
+                }
+            }
+        }
+
+        // Straf voor items met m.u.v. die de zoekterm bevatten
+        if (isExcluded(item.description, searchTerms)) {
+            score -= 1000; // Zorgt ervoor dat deze items onderaan komen
+        }
+
+        return score;
+    }
+
     function filterCommodityResults() {
         var currentTime = new Date().getTime();
         if (currentTime - lastSearchTime < searchDelay) {
@@ -325,11 +367,8 @@
             .map(term => term.trim())
             .filter(term => term.length > 0);
         
-        // Expand each search term with its synonyms
-        var expandedSearchTerms = searchTerms.flatMap(term => expandSearchTerms(term));
-        
+        // Filter items
         var filtered = commodityData.filter(item => {
-            // Item matches if ALL original search terms (or their synonyms) are found in ANY of its fields
             return searchTerms.every(searchTerm => {
                 const termSynonyms = expandSearchTerms(searchTerm);
                 return termSynonyms.some(term =>
@@ -341,16 +380,24 @@
                 );
             });
         });
+
+        // Sort by relevance score
+        filtered.sort((a, b) => {
+            const scoreA = calculateRelevanceScore(a, searchTerms);
+            const scoreB = calculateRelevanceScore(b, searchTerms);
+            return scoreB - scoreA; // Hoogste score eerst
+        });
         
         if (filtered.length === 0) {
             resultsDiv.innerHTML = '<div class="no-results">No matching items found</div>';
             return;
         }
         
+        // Display results
         filtered.slice(0, 50).forEach(item => {
             var resultItem = document.createElement('div');
             resultItem.className = 'commodity-result' + 
-                (isExcluded(item.description, expandedSearchTerms) ? ' excluded' : '');
+                (isExcluded(item.description, searchTerms) ? ' excluded' : '');
             
             resultItem.innerHTML = 
                 '<h3 class="commodity-code">Code: ' + item.code + '</h3>' +
