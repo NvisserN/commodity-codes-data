@@ -363,6 +363,40 @@
         return score;
     }
 
+    // Helper function to categorize items based on description
+    function categorizeCommodity(description) {
+        description = description.toLowerCase();
+        
+        // Voedsel en dranken
+        if (description.match(/melk|kaas|room|zuivel|yoghurt|boter/)) return "Zuivel";
+        if (description.match(/vlees|worst|ham|spek/)) return "Vlees";
+        if (description.match(/vis|schaaldieren|weekdieren/)) return "Vis & Zeevruchten";
+        if (description.match(/groente|fruit|aardappel|ui|knoflook/)) return "Groenten & Fruit";
+        if (description.match(/graan|meel|rijst|pasta/)) return "Granen & Meel";
+        if (description.match(/drank|wijn|bier|alcohol|sap/)) return "Dranken";
+        if (description.match(/suiker|zoetstof|chocolade|cacao/)) return "Zoetwaren";
+        
+        // Materialen
+        if (description.match(/katoen|wol|zijde|textiel|weefsel/)) return "Textiel";
+        if (description.match(/leder|leer|kunstleder|lakleder/)) return "Leder";
+        if (description.match(/hout|bamboe|kurk/)) return "Hout";
+        if (description.match(/papier|karton/)) return "Papier";
+        if (description.match(/kunststof|polymeer|plastic/)) return "Kunststof";
+        if (description.match(/metaal|staal|aluminium|koper|ijzer/)) return "Metaal";
+        if (description.match(/glas|keramiek|porselein/)) return "Glas & Keramiek";
+        
+        // Producten
+        if (description.match(/kleding|kledingstuk|shirt|broek|jas/)) return "Kleding";
+        if (description.match(/schoeisel|schoen|laars/)) return "Schoeisel";
+        if (description.match(/meubel|stoel|tafel|kast/)) return "Meubelen";
+        if (description.match(/gereedschap|machine|apparaat/)) return "Machines & Gereedschap";
+        if (description.match(/speelgoed|spel|sport/)) return "Speelgoed & Sport";
+        if (description.match(/cosmetica|parfum|zeep|shampoo/)) return "Cosmetica";
+        
+        // Als geen specifieke categorie gevonden
+        return "Overig";
+    }
+
     function filterCommodityResults() {
         var currentTime = new Date().getTime();
         if (currentTime - lastSearchTime < searchDelay) {
@@ -379,7 +413,6 @@
             return;
         }
 
-        // Split search terms and expand with synonyms
         var searchTerms = searchText.split(',')
             .map(term => term.trim())
             .filter(term => term.length > 0);
@@ -406,17 +439,24 @@
         normalResults.sort((a, b) => calculateRelevanceScore(b, searchTerms) - calculateRelevanceScore(a, searchTerms));
         excludedResults.sort((a, b) => calculateRelevanceScore(b, searchTerms) - calculateRelevanceScore(a, searchTerms));
         
+        if (filtered.length === 0) {
+            resultsDiv.innerHTML = '<div class="no-results">Geen resultaten gevonden</div>';
+            return;
+        }
+        
         // Display normal results first
         normalResults.slice(0, 50).forEach(item => {
             var resultItem = document.createElement('div');
             resultItem.className = 'commodity-result';
+            
+            // Get category based on description
+            const category = categorizeCommodity(item.description);
+            
             resultItem.innerHTML = 
                 '<h3 class="commodity-code">Code: ' + item.code + '</h3>' +
                 '<p class="commodity-description">' + item.description + '</p>' +
                 '<div class="commodity-meta">' +
-                '<span><strong>Categorie:</strong> ' + item.category + '</span>' +
-                '<span><strong>Type:</strong> ' + item.type + '</span>' +
-                '<span><strong>Materiaal:</strong> ' + item.material + '</span>' +
+                '<span><strong>Categorie:</strong> ' + category + '</span>' +
                 '</div>';
             resultsDiv.appendChild(resultItem);
         });
@@ -432,13 +472,15 @@
             excludedResults.forEach(item => {
                 var resultItem = document.createElement('div');
                 resultItem.className = 'commodity-result excluded';
+                
+                // Get category based on description
+                const category = categorizeCommodity(item.description);
+                
                 resultItem.innerHTML = 
                     '<h3 class="commodity-code">Code: ' + item.code + '</h3>' +
                     '<p class="commodity-description">' + item.description + '</p>' +
                     '<div class="commodity-meta">' +
-                    '<span><strong>Categorie:</strong> ' + item.category + '</span>' +
-                    '<span><strong>Type:</strong> ' + item.type + '</span>' +
-                    '<span><strong>Materiaal:</strong> ' + item.material + '</span>' +
+                    '<span><strong>Categorie:</strong> ' + category + '</span>' +
                     '</div>';
                 resultsDiv.appendChild(resultItem);
             });
