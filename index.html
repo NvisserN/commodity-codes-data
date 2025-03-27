@@ -4,7 +4,6 @@
     <title>Commodity Code Finder</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Add cache control headers -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -63,10 +62,23 @@
             box-shadow: 0 2px 8px rgba(33,150,243,0.1);
         }
 
+        .commodity-result.excluded {
+            border-color: #ff5252;
+            background-color: #fff5f5;
+        }
+
+        .commodity-result.excluded:hover {
+            box-shadow: 0 2px 8px rgba(255,82,82,0.1);
+        }
+
         .commodity-code {
             color: #2196F3;
             margin: 0;
             font-size: 1.2em;
+        }
+
+        .excluded .commodity-code {
+            color: #ff5252;
         }
 
         .commodity-description {
@@ -183,6 +195,39 @@
     var lastSearchTime = 0;
     var searchDelay = 300; // ms delay between searches
 
+    // Synoniemenlijst
+    var synonyms = {
+        'schoen': ['schoeisel', 'schoenen'],
+        'katoen': ['katoenen'],
+        'wol': ['wollen'],
+        'zijde': ['zijden'],
+        'metaal': ['metalen'],
+        'hout': ['houten'],
+        'plastic': ['kunststof', 'polymeer'],
+        'staal': ['stalen'],
+        'aluminium': ['aluminum'],
+        'glas': ['glazen'],
+        'papier': ['papieren'],
+        'leer': ['lederen', 'leren'],
+        'rubber': ['rubberen'],
+        'textiel': ['stof', 'stoffen', 'weefsel']
+    };
+
+    function expandSearchTerms(term) {
+        term = term.toLowerCase();
+        let expanded = [term];
+        
+        // Check if the term has synonyms
+        for (let mainTerm in synonyms) {
+            if (term === mainTerm || synonyms[mainTerm].includes(term)) {
+                expanded = expanded.concat([mainTerm], synonyms[mainTerm]);
+                break;
+            }
+        }
+        
+        return expanded;
+    }
+
     function showError(message) {
         document.getElementById('commodityLoadingMessage').style.display = 'none';
         document.getElementById('commodityErrorMessage').style.display = 'block';
@@ -197,7 +242,6 @@
     }
 
     function loadCommodityData() {
-        // Add timestamp to prevent caching
         fetch('commodity_data.json?' + new Date().getTime())
             .then(response => {
                 if (!response.ok) {
@@ -216,10 +260,19 @@
             });
     }
 
+    function isExcluded(description, searchTerms) {
+        const muv = description.toLowerCase().indexOf('m.u.v.');
+        if (muv === -1) return false;
+
+        // Check if any search term appears after "m.u.v."
+        const textAfterMuv = description.toLowerCase().substring(muv + 6);
+        return searchTerms.some(term => textAfterMuv.includes(term));
+    }
+
     function filterCommodityResults() {
         var currentTime = new Date().getTime();
         if (currentTime - lastSearchTime < searchDelay) {
-            return; // Skip if too soon after last search
+            return;
         }
         lastSearchTime = currentTime;
 
@@ -232,18 +285,26 @@
             return;
         }
 
-        // Split search terms by comma and trim whitespace
-        var searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term.length > 0);
+        // Split search terms and expand with synonyms
+        var searchTerms = searchText.split(',')
+            .map(term => term.trim())
+            .filter(term => term.length > 0);
+        
+        // Expand each search term with its synonyms
+        var expandedSearchTerms = searchTerms.flatMap(term => expandSearchTerms(term));
         
         var filtered = commodityData.filter(item => {
-            // Item matches if ALL search terms are found in ANY of its fields
-            return searchTerms.every(term =>
-                item.code.toLowerCase().includes(term) ||
-                item.description.toLowerCase().includes(term) ||
-                item.category.toLowerCase().includes(term) ||
-                item.type.toLowerCase().includes(term) ||
-                item.material.toLowerCase().includes(term)
-            );
+            // Item matches if ALL original search terms (or their synonyms) are found in ANY of its fields
+            return searchTerms.every(searchTerm => {
+                const termSynonyms = expandSearchTerms(searchTerm);
+                return termSynonyms.some(term =>
+                    item.code.toLowerCase().includes(term) ||
+                    item.description.toLowerCase().includes(term) ||
+                    item.category.toLowerCase().includes(term) ||
+                    item.type.toLowerCase().includes(term) ||
+                    item.material.toLowerCase().includes(term)
+                );
+            });
         });
         
         if (filtered.length === 0) {
@@ -253,7 +314,9 @@
         
         filtered.slice(0, 50).forEach(item => {
             var resultItem = document.createElement('div');
-            resultItem.className = 'commodity-result';
+            resultItem.className = 'commodity-result' + 
+                (isExcluded(item.description, expandedSearchTerms) ? ' excluded' : '');
+            
             resultItem.innerHTML = 
                 '<h3 class="commodity-code">Code: ' + item.code + '</h3>' +
                 '<p class="commodity-description">' + item.description + '</p>' +
